@@ -18,7 +18,6 @@ ll_ranges = [IPNetwork(r) for r in ll_ranges]
 
 def lindenip(addr):
     #True if address is in one of LL's IP ll_ranges, else False
-    ip = IPAddress(addr)
-    return any([ip in r for r in ll_ranges])
+    return any([IPAddress(addr) in r for r in ll_ranges])
 
 

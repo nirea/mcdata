@@ -7,10 +7,18 @@ import mongoengine as mg
 MAX_SIZE = 2048
 
 
+class Owner(mg.EmbeddedDocument):
+    key=mg.StringField(max_length=36, unique=True, required=True)
+    username=mg.StringField(max_length=63)
+
+    def to_owner(self):
+        return '%s,%s' % (self.key, self.username)
+
+
 class Av(mg.Document):
     key=mg.StringField(max_length=36, unique=True, required=True)
     username=mg.StringField(max_length=63)
-    owners=mg.ListField(mg.ReferenceField('Av'))
+    owners=mg.ListField(Owner)
 
     meta = {
         'allow_inheritance': False,
@@ -21,9 +29,6 @@ class Av(mg.Document):
             return self.username
         else:
             return self.key
-
-    def to_owner(self):
-        return '%s,%s' % (self.key, self.username)
 
     def has_owner(self, key):
         """Determine whether av identified by 'key' is an owner of self."""
@@ -48,3 +53,5 @@ class Av(mg.Document):
 
     # TODO: a delete() method that also removes references from anyone's owners
     # list.
+
+    # TODO: enforce MAX_SIZE quotas on save

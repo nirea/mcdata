@@ -11,7 +11,7 @@ from functools import wraps
 from flask import Flask, Response, abort, request
 import mongoengine as mg
 
-from models import Av
+from models import Av, Owner
 import llip
 
 
@@ -113,16 +113,12 @@ def av_by_key(key):
         # if the owner av doesn't already have one set.  Otherwise miscreant
         # subs could rename their owners o.O
         if 'owners' in request.form:
-            def do_owner(avkey, username):
-                d = {'username': username}
-                o, created = Av.objects.get_or_create(key=avkey, defaults=d)
-                return o
             # owners string will look like avkey,avname,av2key,av2name etc.
             # split it on commas, then zip into tuples of (key,name).  Iterate
             # over those tuples and ensure that there's an av object for each
             # one in the DB's owner list.
             vals = request.form['owners'].split(",")
-            av.owners = [do_owner(*i) for i in zip(vals[::2], vals[1::2])]
+            av.owners = [Owner(*i) for i in zip(vals[::2], vals[1::2])]
 
         av.save()
         return formdata(av.to_lsl())
