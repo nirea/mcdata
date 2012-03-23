@@ -1,4 +1,4 @@
 Flask==0.8
-Jinja2==2.6
-Werkzeug==0.8.3
 gunicorn==0.14.2
+mongoengine==0.6.2
+ipaddr==2.1.10
