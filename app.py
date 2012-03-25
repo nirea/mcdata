@@ -6,6 +6,7 @@ access to their own data and those for whom they are listed as 'owners'.
 """
 
 import os
+import logging
 from functools import wraps
 
 from flask import Flask, Response, abort, request
@@ -41,8 +42,12 @@ def formdata(txt):
 
 def inworld_only(f):
     """Flask view decorator to only allow requests from within SL"""
+    logging.info('inworld_only outer:' + str(f))
     @wraps(f)
     def decorated_function(*args, **kwargs):
+        logging.info('inworld_only inner')
+        logging.info(args)
+        logging.info(kwargs)
         # Ensure we have an owner key
         if not OWNER_HEADER in request.headers:
             abort(403)
@@ -81,6 +86,7 @@ def home():
 @app.route('/api/1/av/<key>/', methods=['GET', 'PUT', 'DELETE'])
 @inworld_only
 def av_by_key(key):
+    logging.info('av_by_key: ' + key)
     requester = request.headers[OWNER_HEADER]
     try:
         av = Av.objects.get(key=key)
