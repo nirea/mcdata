@@ -6,7 +6,6 @@ access to their own data and those for whom they are listed as 'owners'.
 """
 
 import os
-import logging
 from functools import wraps
 
 from flask import Flask, Response, abort, request
@@ -42,12 +41,8 @@ def formdata(txt):
 
 def inworld_only(f):
     """Flask view decorator to only allow requests from within SL"""
-    logging.info('inworld_only outer:' + str(f))
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        logging.info('inworld_only inner')
-        logging.info(args)
-        logging.info(kwargs)
         # Ensure we have an owner key
         if not OWNER_HEADER in request.headers:
             abort(403)
@@ -86,7 +81,6 @@ def home():
 @app.route('/api/1/av/<key>/', methods=['GET', 'PUT', 'DELETE'])
 @inworld_only
 def av_by_key(key):
-    logging.info('av_by_key: ' + key)
     requester = request.headers[OWNER_HEADER]
     try:
         av = Av.objects.get(key=key)
@@ -112,19 +106,14 @@ def av_by_key(key):
         # application/x-www-form-urlencoded.  Assuming it was, then Flask will
         # parse it and stick it on request.form.  Save it to the av, then
         # return the av's data.
-        if 'username' in request.form:
-            av.username = request.form['username']
 
-        # XXX: When a sub saves an owner, we should only use the name provided
-        # if the owner av doesn't already have one set.  Otherwise miscreant
-        # subs could rename their owners o.O
         if 'owners' in request.form:
             # owners string will look like avkey,avname,av2key,av2name etc.
             # split it on commas, then zip into tuples of (key,name).  Iterate
             # over those tuples and ensure that there's an av object for each
             # one in the DB's owner list.
             vals = request.form['owners'].split(",")
-            av.owners = [Owner(*i) for i in zip(vals[::2], vals[1::2])]
+            av.owners = [Owner(**{'key':i[0], 'name':i[1]}) for i in zip(vals[::2], vals[1::2])]
 
         av.save()
         return formdata(av.to_lsl())

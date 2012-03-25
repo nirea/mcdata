@@ -9,26 +9,22 @@ MAX_SIZE = 2048
 
 class Owner(mg.EmbeddedDocument):
     key=mg.StringField(max_length=36, unique=True, required=True)
-    username=mg.StringField(max_length=63)
+    name=mg.StringField(max_length=63)
 
     def to_owner(self):
-        return '%s,%s' % (self.key, self.username)
+        return '%s,%s' % (self.key, self.name)
 
 
 class Av(mg.Document):
     key=mg.StringField(max_length=36, unique=True, required=True)
-    username=mg.StringField(max_length=63)
-    owners=mg.ListField(Owner)
+    owners=mg.ListField(mg.EmbeddedDocumentField(Owner))
 
     meta = {
         'allow_inheritance': False,
     }
 
     def __unicode__(self):
-        if self.username:
-            return self.username
-        else:
-            return self.key
+        return self.key
 
     def has_owner(self, key):
         """Determine whether av identified by 'key' is an owner of self."""
@@ -41,7 +37,6 @@ class Av(mg.Document):
         """
 
         out = ["key=" + self.key]
-        out += ["username=" + self.username]
         out += ["owners=" + ",".join([o.to_owner() for o in self.owners])]
         return "&".join(out)
 
