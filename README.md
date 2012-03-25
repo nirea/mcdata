@@ -32,11 +32,12 @@ running:
     source env/bin/activate
     pip install -r requirements.txt
 
-    # Run the program.  Will start on port 5000 by default.
-    python app.py
+    # Run the program.  Will start on port 5000 by default.  Requires the
+    # MCDATA_SUPERUSER environment variable
+    MCDATA_SUPERUSER="some av key" python app.py
 
     # Or run with gunicorn, which lets you start multiple workers.
-    gunicorn app:app -w 2 -b 0.0.0.0:5000
+    MCDATA_SUPERUSER="some av key" gunicorn app:app -w 2 -b 0.0.0.0:5000
 
 (Those steps were tested on Oneiric Ocelot, but ought to work all the way back
 to Lucid Lynx.)
@@ -69,6 +70,10 @@ need to use it in the next command to finish your git configuration.
 
 Just replace <appname> with the name given during the 'heroku create' step
 above.
+
+Set the MCDATA_SUPERUSER environment variable to your av key.
+
+    heroku config:add MCDATA_SUPERUSER="some av key"
 
 You probably want to use the [MongoLab
 addon](http://devcenter.heroku.com/articles/mongolab), which has a free
