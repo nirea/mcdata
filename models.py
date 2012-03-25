@@ -38,7 +38,7 @@ class Av(mg.Document):
 
         out = ["key=" + self.key]
         out += ["owners=" + ",".join([o.to_owner() for o in self.owners])]
-        return "&".join(out)
+        return "\n".join(out)
 
     @property
     def size(self):

@@ -6,6 +6,8 @@ access to their own data and those for whom they are listed as 'owners'.
 """
 
 import os
+import logging
+import warnings
 from functools import wraps
 
 from flask import Flask, Response, abort, request
@@ -18,13 +20,30 @@ import llip
 DEBUG = True if os.environ.get('DEBUG') else False
 OWNER_HEADER = 'X-SecondLife-Owner-Key'
 
+if DEBUG:
+    logging.basicConfig(level=logging.DEBUG)
+else:
+    logging.basicConfig(level=logging.INFO)
+
+try:
+    SUPERUSER = os.environ['MCDATA_SUPERUSER']
+except KeyError:
+    raise SystemExit("You must set the MCDATA_SUPERUSER environment variable.")
+
 # DB stuff.  Here we look a MongoDB connection URI as will be passed in by
 # Heroku if you have enabled the MongoLab Addon.  MongoLab offers a free plan
-# with 250MB of storage. If that env var isn't set, then fall back to using a
-# local MongoDB.
-db_uri = os.environ.get('MONGOLAB_URI') or 'mongodb://localhost/mcdata'
+# with 250MB of storage. If that env var isn't set, then fall back to
+# MONGODB_URI, then to using a local MongoDB.
+db_uri = (os.environ.get('MONGOLAB_URI') 
+          or os.environ.get('MONGODB_URI')
+          or 'mongodb://localhost/mcdata')
 db_name = db_uri.rpartition('/')[-1]
-mg.connect(db_name, host=db_uri)
+
+# Connecting using a URI will raise a warning if we don't supply an optional
+# username/password.  This is lame, but we can filter the warning out.
+with warnings.catch_warnings():
+    warnings.simplefilter('ignore')
+    mg.connect(db_name, host=db_uri)
 
 
 # Webby stuff
@@ -33,13 +52,12 @@ app = Flask(__name__)
 
 def text(txt):
     """Shortcut for returning text/plain"""
+    # Was going to return application/x-www-form-urlencoded, but SVC-635 :(
+    # That bug's almost old enough to go to kindergarten, LL.  C'mon.
     return Response(txt, mimetype="text/plain")
 
-def formdata(txt):
-    return Response(txt, mimetype="application/x-www-form-urlencoded")
 
-
-def inworld_only(f):
+def inworld(f):
     """Flask view decorator to only allow requests from within SL"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -53,10 +71,26 @@ def inworld_only(f):
         if not llip.lindenip(request.remote_addr) and not DEBUG:
             abort(403)
 
+        if not request.content_type == 'text/plain':
+            msg = ('Content-Type must be text/plain.  Was %s' %
+                   request.content_type)
+            return msg, 415
+
+        # Parse any data sent in.  Assume it's key=value pairs,
+        # newline-delimited.
+        if request.data:
+            try:
+                request.lsldata = dict([x.split('=') for x in
+                                        request.data.rstrip().split('\n')])
+            except ValueError:
+                return 'Could not parse data', 400
+        else:
+            request.lsldata = {}
+
         return f(*args, **kwargs)
     return decorated_function
 
-# TODO: Move this message into a jinja template
+
 FORBIDDEN_MSG = """Access denied.  You are either accessing from an
 unauthorized IP address or did not supply an %(OWNER_HEADER)s header.
 
@@ -75,48 +109,49 @@ def forbidden(error):
 
 @app.route('/')
 def home():
+    # A request to the homepage will return the app's docstring, in plain text
+    # format.
     return text(__doc__)
 
 
 @app.route('/api/1/av/<key>/', methods=['GET', 'PUT', 'DELETE'])
-@inworld_only
+@inworld
 def av_by_key(key):
     requester = request.headers[OWNER_HEADER]
     try:
         av = Av.objects.get(key=key)
     except Av.DoesNotExist:
-        if request.method == 'PUT' and requester==key:
-            # First submission from a new user.  create record for them.
+        if request.method == 'PUT' and requester==SUPERUSER:
+            # Only the superuser may create new records.
+            logging.info('Creating new av record for %s' % key)
             av = Av(key=key)
         else:
             # XXX Unauthorized access has to return exactly the same response as
             # an av not existing in the DB.  Otherwise people can make requests to
             # others' urls and use the differing responses to see who has used the
             # service.
+            logging.info('Av %s does not exist' % key)
             abort(404)
 
     # Ensure that this person is allowed to access this data
-    if not key == av.key or av.has_owner(key):
+    if not key == av.key or av.has_owner(requester):
+        logging.info('%s denied access to %s' % (requester, av.key))
         abort(404)
 
     if request.method == 'GET':
-        return formdata(av.to_lsl())
+        return text(av.to_lsl())
     elif request.method == 'PUT':
-        # data should have been sent with mimetype of
-        # application/x-www-form-urlencoded.  Assuming it was, then Flask will
-        # parse it and stick it on request.form.  Save it to the av, then
-        # return the av's data.
-
-        if 'owners' in request.form:
+        if 'owners' in request.lsldata:
             # owners string will look like avkey,avname,av2key,av2name etc.
             # split it on commas, then zip into tuples of (key,name).  Iterate
-            # over those tuples and ensure that there's an av object for each
-            # one in the DB's owner list.
-            vals = request.form['owners'].split(",")
-            av.owners = [Owner(**{'key':i[0], 'name':i[1]}) for i in zip(vals[::2], vals[1::2])]
+            # over those tuples and ensure that there's a record for each one
+            # in the DB's owner list.
+            vals = request.lsldata['owners'].split(",")
+            av.owners = [Owner(**{'key':i[0], 'name':i[1]}) for i in
+                         zip(vals[::2], vals[1::2])]
 
         av.save()
-        return formdata(av.to_lsl())
+        return text(av.to_lsl())
 
 
 # The lines below only come into play if you try to run this as a standalone
