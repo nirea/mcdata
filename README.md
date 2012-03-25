@@ -82,3 +82,7 @@ typing this next step.
 You're now ready to push the code to Heroku.
 
     git push heroku master 
+
+And start up your process
+
+    heroku scale web=1 
