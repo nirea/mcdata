@@ -1,4 +1,4 @@
-mdata
+mcdata
 =====
 
 This is an http server for storing and retrieving myCollar settings, using
