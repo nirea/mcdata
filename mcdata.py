@@ -71,7 +71,7 @@ def inworld(f):
         if not llip.lindenip(request.remote_addr) and not DEBUG:
             abort(403)
 
-        if not request.content_type.startswith('text/plain'):
+        if request.content_type and not request.content_type.startswith('text/plain'):
             msg = ('Content-Type must be text/plain.  Was %s' %
                    request.content_type)
             return msg, 415

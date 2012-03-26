@@ -5,7 +5,7 @@ import random
 
 from models import Av
 
-# To run these, 'pip install nose' and then run 'nosetests'
+# To run these tests, 'pip install nose' and then run 'nosetests'
 
 random_chars = lambda x: ''.join([random.choice(string.letters) for y in xrange(x)])
 
@@ -118,7 +118,7 @@ class MCDataTestCase(MCBaseTestCase):
         res = self.put(url, 'owners=foo,bar')
         assert res.status_code == 404
 
-    def test_bad_data(self):
+    def test_put_bad_data(self):
         # invalid request.data should get a 400 response 
         av = Av(key=self.key)
         av.save()
