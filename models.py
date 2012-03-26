@@ -35,10 +35,11 @@ class Av(mg.Document):
         Return "key=val" newline-delimited string for easy parsing by LSL
         scripts.
         """
-
-        out = ["key=" + self.key]
-        out += ["owners=" + ",".join([o.to_owner() for o in self.owners])]
-        return "\n".join(out)
+        
+        return '\n'.join([
+            "MCDATA " + self.key, # MCDATA header
+            "owners=" + ",".join([o.to_owner() for o in self.owners])
+        ])
 
     @property
     def size(self):

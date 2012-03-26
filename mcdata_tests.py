@@ -54,7 +54,8 @@ class MCBaseTestCase(unittest.TestCase):
         kwargs['headers'] = {
             'X-SecondLife-Owner-Key': self.key,
         }
-        kwargs['content_type'] = 'text/plain'
+        # default content type for llHTTPRequest
+        kwargs['content_type'] = 'text/plain;charset=utf-8'
         return self.client.open(path, **kwargs)
 
     def get(self, path, **kwargs):
@@ -96,7 +97,10 @@ class MCDataTestCase(MCBaseTestCase):
         av.save()
         res = self.get(self.url)
         assert res.status_code == 200
-        assert 'key=' + self.key in res.data
+
+        # The first line of responses should have "MCDATA", followed by a
+        # space, followed by the key of the av whose data was just fetched.
+        assert res.data.split('\n')[0] == 'MCDATA ' + self.key 
 
     def test_unsubscribed_put(self):
         # non-existent user should not be able to save data
