@@ -14,6 +14,10 @@ class Owner(mg.EmbeddedDocument):
     def to_owner(self):
         return '%s,%s' % (self.key, self.name)
 
+    meta = {
+        'allow_inheritance': False
+    }
+
 
 class Av(mg.Document):
     key=mg.StringField(max_length=36, unique=True, required=True)
