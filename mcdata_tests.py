@@ -3,7 +3,7 @@ import unittest
 import string
 import random
 
-from models import Av
+from models import Av, Owner
 
 # To run these tests, 'pip install nose' and then run 'nosetests'
 
@@ -127,6 +127,26 @@ class MCDataTestCase(MCBaseTestCase):
         bad_data = 'owners=foo,bar&favcolor=blue'
         res = self.put(self.url, bad_data)
         assert res.status_code == 400
+
+    def test_own_owner_save_data(self):
+        # I saw a bug where someone couldn't edit data because they were in
+        # their own owner list and I had misjudged the order of evaluation for
+        # a 'not' and an 'or' in the same expression.  This test would fail if
+        # that bug were still around.
+
+        # Make an av with himself in owner list
+        av = Av(
+            key=self.key,
+            owners=[Owner(key=self.key, name=self.key)]
+        )
+        av.save()
+
+        # Now try to PUT new data
+        new_owners = [av.key, av.key, random_chars(10), random_chars(10)]
+        new_data = 'owners=%s' % new_owners
+        res = self.put(self.url, new_data)
+        assert res.status_code == 200
+
 
 
 def tearDown():

@@ -134,7 +134,7 @@ def av_by_key(key):
             abort(404)
 
     # Ensure that this person is allowed to access this data
-    if not key == av.key or av.has_owner(requester):
+    if not (key == av.key or av.has_owner(requester)):
         logging.info('%s denied access to %s' % (requester, av.key))
         abort(404)
 
